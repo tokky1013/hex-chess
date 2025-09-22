@@ -1,0 +1,142 @@
+:root {
+    --main-color: #e0e0e0;
+    --main-background-color0: #202020;
+    --main-background-color1: #404040;
+
+    --color-player0: red;
+    --color-player1: blue;
+
+    --header-height: 50px;
+    --cell-size: 40px;
+    --chessman-size: 30px;
+    --border-width: 5px;
+}
+
+body {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    width: 100svw;
+    height: 100svh;
+    overscroll-behavior: none;
+    overflow: hidden;
+
+    background-color: var(--main-background-color0);
+}
+
+header {
+    height: var(--header-height);
+    width: 100%;
+    color: var(--main-color);
+    background-color: var(--main-background-color1);
+
+    display: flex;
+    align-items: center;
+}
+
+header span {
+    margin-left: 20px;
+    font-weight: 100;
+    font-size: 2rem;
+}
+
+main {
+    width: 100svw;
+    height: calc(100svh - var(--header-height));
+    overflow: scroll;
+}
+
+#turn-container {
+    color: var(--main-color);
+    background-color: #20202080;
+    font-size: 1.8rem;
+    position: absolute;
+    top: var(--header-height);
+    padding-top: 10px;
+    z-index: 110;
+
+    width: 100svw;
+    display: flex;
+    justify-content: center;
+    align-self: center;
+}
+
+#field {
+    padding: calc((var(--cell-size) + var(--border-width) * 2) * 0.118) 0;
+    position: relative;
+}
+
+.row {
+    display: flex;
+    flex-shrink: 0;
+    position: relative;
+    left: calc((var(--cell-size) + var(--border-width) * 2) * -0.559);
+    overflow-x: hidden;
+}
+.row:nth-child(odd) .cell {
+    transform: translateX(50%);
+}
+
+.cell {
+    width: var(--cell-size);
+    min-width: var(--cell-size);
+    height: var(--cell-size);
+    margin-left: calc((var(--cell-size) + var(--border-width) * 2) * 0.118);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    border: var(--border-width) solid transparent;
+}
+.cell.available {
+    background-color: var(--main-color);
+}
+
+.cell.selected {
+    border: var(--border-width) solid #c3ff6a;
+}
+@keyframes blinking {
+   0% {
+   border: var(--border-width) dashed #5ec4ff;
+   }
+   25% {
+   border: var(--border-width) dashed #5ec4ff;
+   }
+   100% {
+   border: var(--border-width) dashed #5ec4ff00;
+   }
+}
+.cell.candidate {
+    animation: blinking 0.8s ease-in-out infinite alternate;
+}
+
+.cell.moving {
+    position: absolute;
+    z-index: 100;
+    transition: 0.3s;
+}
+
+.chessman {
+    width: var(--chessman-size);
+    height: var(--chessman-size);
+    border-radius: 50%;
+}
+
+.chessman0 {
+    background-color: var(--color-player0);
+}
+.chessman1 {
+    background-color: var(--color-player1);
+}
+.chessman.moving {
+    position: absolute;
+    z-index: 100;
+    transition: 0.3s;
+}
+
+/* ----その他---- */
+.d-none {
+    display: none;
+}
