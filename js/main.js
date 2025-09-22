@@ -1,3 +1,4 @@
+const TOUCH_MOVE_THRESHOLD = 40;
 let game;
 
 class Game {
@@ -10,12 +11,16 @@ class Game {
         this.origin = {};
         this.turn = 0;
         this.playerNum = 0;
+        this.initialCursorPosX = null;
+        this.initialCursorPosY = null;
 
         this.playerNames = ['Red', 'Blue'];
 
         this.init();
-        $(document).on('touchstart', function(event) {
-
+        $(window).on('touchstart', (event) => {
+            const touch = event.originalEvent.changedTouches[0];
+            this.initialCursorPosX = touch.clientX;
+            this.initialCursorPosY = touch.clientY;
         });
     }
 
@@ -49,6 +54,42 @@ class Game {
             // 左下
             (prevX, prevY) => { return { x: (prevY % 2 === 0) ? prevX + 1 : prevX, y: prevY + 1 }; },
         ];
+
+        // touchendでタッチされたと判定して良いかどうかの関数
+        const isTouched = (event) => {
+            if (this.initialCursorPosX === null || this.initialCursorPosY === null) return true;
+            const touch = event.originalEvent.changedTouches[0];
+            return (touch.clientX - this.initialCursorPosX) ** 2 + (touch.clientY - this.initialCursorPosY) ** 2 < TOUCH_MOVE_THRESHOLD ** 2;
+        };
+
+        // funcの方向のコマを置ける候補のますを取得
+        // なければnullを返す
+        const getChessmanCandidate = (index, func) => {
+            let prevX = index.x;
+            let prevY = index.y;
+
+            let nextIndex = func(prevX, prevY);
+
+            let nextCell = this.getCell(nextIndex.x, nextIndex.y);
+            if (this.isAvailable(nextCell) && this.getChessmanName(nextCell) === null) {
+                prevX = nextIndex.x;
+                prevY = nextIndex.y;
+                nextIndex = func(prevX, prevY);
+                nextCell = this.getCell(nextIndex.x, nextIndex.y);
+
+                while (this.isAvailable(nextCell) && this.getChessmanName(nextCell) === null) {
+                    prevX = nextIndex.x;
+                    prevY = nextIndex.y;
+                    nextIndex = func(prevX, prevY);
+                    nextCell = this.getCell(nextIndex.x, nextIndex.y);
+                    if (!nextCell) break;
+                }
+
+                return this.getCell(prevX, prevY);
+            }
+            return null;
+        };
+
         // 動かすコマが選択された時の処理
         const moveChessman = ($selectedCell) => {
             $(`.cell.available`).removeClass('candidate');
@@ -56,44 +97,25 @@ class Game {
             $selectedCell.addClass('selected');
 
             let index = this.getCellIndex($selectedCell);
-            let nextCell;
 
             // 候補を調べてクラスとイベントを追加
             for (const func of funcsGetNextIndex) {
-                let prevX = index.x;
-                let prevY = index.y;
-
-                let nextIndex = func(prevX, prevY);
-
-                nextCell = this.getCell(nextIndex.x, nextIndex.y);
-                if (this.isAvailable(nextCell) && this.getChessmanName(nextCell) === null) {
-                    prevX = nextIndex.x;
-                    prevY = nextIndex.y;
-                    nextIndex = func(prevX, prevY);
-                    nextCell = this.getCell(nextIndex.x, nextIndex.y);
-
-                    while (this.isAvailable(nextCell) && this.getChessmanName(nextCell) === null) {
-                        prevX = nextIndex.x;
-                        prevY = nextIndex.y;
-                        nextIndex = func(prevX, prevY);
-                        nextCell = this.getCell(nextIndex.x, nextIndex.y);
-                        if (!nextCell) break;
-                    }
-
-                    const $candidate = this.getCell(prevX, prevY);
+                const $candidate = getChessmanCandidate(index, func);
+                if ($candidate !== null) {
+                    const candidateIndex = this.getCellIndex($candidate);
                     $candidate.addClass('candidate');   // 候補を表示
                     // クリック時にコマを移動
                     const move = () => {
-                        this.moveChessman(index, { x: prevX, y: prevY }, () => {
+                        this.moveChessman(index, { x: candidateIndex.x, y: candidateIndex.y }, () => {
                             // リセット
                             $('.cell.selected').removeClass('selected');
                             $('.cell.candidate').removeClass('candidate');
                             $('.cell').off();
 
                             // 勝敗の判定
-                            let allChessmanHaveNeighbor = true;
-                            let allChessmanHaveTwoNeighbors = true;
-                            // 三つ全てが隣接しているかの判定
+                            let allChessmanHaveNeighbor = true;     // 隣接する味方のコマがあるかどうか
+                            let allChessmanHaveTwoNeighbors = true; // 隣接する味方のコマが二つあるかどうか
+                            // 隣接している味方のコマをカウント
                             const getNeighbourChessmanCount = ($cell) => {
                                 const index = this.getCellIndex($cell);
                                 let cnt = 0
@@ -118,22 +140,27 @@ class Game {
 
                             if (allChessmanHaveNeighbor && !allChessmanHaveTwoNeighbors) {
                                 // 決着がついたら
-                                if(confirm(this.playerNames[this.playerNum] + 'の勝ちです。もう一度プレイしますか？')) {
+                                if (confirm(this.playerNames[this.playerNum] + 'の勝ちです。もう一度プレイしますか？')) {
                                     this.init();
                                     this.start();
                                 }
                             } else {
                                 // 決着がついていなければ
                                 $('.cell.available:not(*:has(.chessman))').on('touchend', function (event) {
-                                    moveCell($(this));
+                                    if (isTouched(event)) {
+                                        moveCell($(this));
+                                    }
                                 });
                             }
                         });
                     };
-                    $candidate.on('touchend', move);
+                    $candidate.on('touchend', function (event) {
+                        if (isTouched(event)) {
+                            move();
+                        }
+                    });
                 }
             }
-
         };
         // 動かすセルが選択された時の処理
         const moveCell = ($selectedCell) => {
@@ -184,8 +211,10 @@ class Game {
                             });
                         };
                         $nextCell.on('touchend', function (event) {
-                            // 移動さきのセルを選択した時の処理
-                            move();
+                            // 移動先のセルを選択した時の処理
+                            if (isTouched(event)) {
+                                move();
+                            }
                         });
                     }
                 }
@@ -195,9 +224,39 @@ class Game {
             });
         }
 
-        $(`.cell:has(.chessman${this.playerNum})`).on('touchend', function (event) {
-            moveChessman($(this));
+        // 動かせるコマがあるか判定
+        let isMovable = false;
+        const hasCandidate = ($cell) => {
+            const index = this.getCellIndex($cell);
+            for (const func of funcsGetNextIndex) {
+                const $candidate = getChessmanCandidate(index, func);
+                if ($candidate !== null) return true;
+            }
+            return false;
+        };
+        $(`.cell:has(.chessman${this.playerNum})`).each(function () {
+            if (hasCandidate($(this))) {
+                isMovable = true;
+            }
         });
+        if (isMovable) {
+            // 動かせるコマがあれば
+            $(`.cell:has(.chessman${this.playerNum})`).on('touchend', function (event) {
+                if (isTouched(event)) {
+                    moveChessman($(this));
+                }
+            });
+        } else {
+            // 動かせるコマがなければ
+            $('.cell.selected').removeClass('selected');
+            $('.cell').off();
+
+            $('.cell.available:not(*:has(.chessman))').on('touchend', function (event) {
+                if (isTouched(event)) {
+                    moveCell($(this));
+                }
+            });
+        }
     }
 
     endTurn() {
