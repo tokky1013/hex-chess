@@ -8,17 +8,24 @@ class Game {
         this.borderWidth = $(':root').css('--border-width').replace('px', '') - 0;
         this.fieldSize = {};
         this.origin = {};
+        this.playerNum = 0;
 
         this.init();
     }
 
     init() {
         this.createField();
-        $('#turn').css('color', 'var(--color-player0)')
+        $('#turn').css('color', 'var(--color-player0)');
+        this.playerNum = 0;
     }
 
     start() {
+        
+    }
 
+    nextTurn() {
+        $('.cell.selected').removeClass('selecter');
+        $('.cell.candidate').removeClass('candidate');
     }
 
     // ----描画----
@@ -131,7 +138,7 @@ class Game {
     moveChessman(from, to) {
         const $cellFrom = this.getCell(from.x, from.y);
         const $cellTo = this.getCell(to.x, to.y);
-        if (this.hasChessman($cellFrom) && !this.hasChessman($cellTo) && this.isAvailable($cellTo)) {
+        if (this.getChessman($cellFrom) && !this.getChessman($cellTo) && this.isAvailable($cellTo)) {
             let $chessman = $cellFrom.find('.chessman')[0];
 
             const cellPosFrom = this.getCellPos(from.x, from.y);
@@ -198,8 +205,20 @@ class Game {
         return index;
     }
 
-    hasChessman(cell) {
-        return cell.find(".chessman").length > 0;
+    // 指定したセルにchessman0, chessman1のどちらがあるかを返す
+    // どちらもなければnullを返す
+    getChessmanName(cell) {
+        const $chessman = cell.find(".chessman");
+        if($chessman.length === 0) {
+            return null;
+        }
+        let classes = $chessman.first().attr('class').split(' ');
+        for (const className of classes) {
+            if(className.match(/^chessman[0,1]$/)) {
+                return className;
+            }
+        }
+        return null;
     }
     isAvailable(cell) {
         return cell.hasClass('available');
@@ -208,6 +227,10 @@ class Game {
 
 // ----初期化----
 $(function () {
+    window.addEventListener('touchmove', function (e) {
+        e.preventDefault(); // プル・トゥ・リフレッシュ防止
+    }, { passive: false });
+    
     game = new Game();
     game.init();
     game.start();
