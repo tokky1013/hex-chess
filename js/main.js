@@ -340,6 +340,21 @@ class Game {
 
         // 移動中のセルを追加
         $field.append($('<div>').addClass('cell available moving d-none'));
+
+        // 六角形が中央にくるようにスクロール
+        const $container = $('main');
+        const $target = this.getCell(this.origin.x, this.origin.y);
+        const containerHeight = $container.height();
+        const containerWidth = $container.width();
+        const targetOffset = $target.position();  // コンテナ基準の位置
+        const targetHeight = $target.outerHeight();
+        const targetWidth = $target.outerWidth();
+
+        const scrollPositionTop = targetOffset.top - (containerHeight / 2) + (targetHeight / 2);
+        const scrollPositionLeft = targetOffset.left - (containerWidth / 2) + (targetWidth / 2);
+
+        $container.scrollTop(scrollPositionTop);
+        $container.scrollLeft(scrollPositionLeft);
     }
 
     addColumnLeft() {
@@ -348,6 +363,9 @@ class Game {
         });
         this.fieldSize.width++;
         this.adjustFieldWidth();
+
+        // スクロール位置を調整
+        $('main').scrollLeft($('main').scrollLeft() + (this.cellSize + this.borderWidth * 2) * 1.118);
     }
 
     addColumnRight() {
@@ -369,6 +387,9 @@ class Game {
         }
         $('#field').prepend($row);
         this.fieldSize.height++;
+
+        // スクロール位置を調整
+        $('main').scrollTop($('main').scrollTop() + (this.cellSize + this.borderWidth * 2) * 2);
     }
     addRowBottom() {
         const $row = $('<div>').addClass('row');
