@@ -3,8 +3,8 @@
     --main-background-color0: #202020;
     --main-background-color1: #404040;
 
-    --color-player0: red;
-    --color-player1: blue;
+    --color-player0: #ff0000;
+    --color-player1: #2d3bff;
 
     --header-height: 50px;
     --cell-size: 40px;

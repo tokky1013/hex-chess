@@ -8,7 +8,10 @@ class Game {
         this.borderWidth = $(':root').css('--border-width').replace('px', '') - 0;
         this.fieldSize = {};
         this.origin = {};
+        this.turn = 0;
         this.playerNum = 0;
+
+        this.playerNames = ['Red', 'Blue'];
 
         this.init();
     }
@@ -16,16 +19,23 @@ class Game {
     init() {
         this.createField();
         $('#turn').css('color', 'var(--color-player0)');
+        $('#turn').text(this.playerNames[0]);
+        this.turn = 0;
         this.playerNum = 0;
     }
 
     start() {
-        
+
     }
 
     nextTurn() {
         $('.cell.selected').removeClass('selecter');
         $('.cell.candidate').removeClass('candidate');
+
+        this.turn++;
+        this.playerNum = this.turn % 2;
+        $('#turn').css('color', `var(--color-player${this.playerNum})`);
+        $('#turn').text(this.playerNames[this.playerNum]);
     }
 
     // ----描画----
@@ -209,12 +219,12 @@ class Game {
     // どちらもなければnullを返す
     getChessmanName(cell) {
         const $chessman = cell.find(".chessman");
-        if($chessman.length === 0) {
+        if ($chessman.length === 0) {
             return null;
         }
         let classes = $chessman.first().attr('class').split(' ');
         for (const className of classes) {
-            if(className.match(/^chessman[0,1]$/)) {
+            if (className.match(/^chessman[0,1]$/)) {
                 return className;
             }
         }
@@ -227,10 +237,22 @@ class Game {
 
 // ----初期化----
 $(function () {
-    window.addEventListener('touchmove', function (e) {
-        e.preventDefault(); // プル・トゥ・リフレッシュ防止
-    }, { passive: false });
-    
+    let startY = 0;
+
+    $(window).on("touchstart", function (e) {
+        startY = e.originalEvent.touches[0].pageY;
+    });
+
+    $(window).on("touchmove", function (e) {
+        let scrollTop = $(window).scrollTop();
+        let currentY = e.originalEvent.touches[0].pageY;
+
+        // ページ先頭で下方向に引っ張った場合のみ無効化
+        if (scrollTop <= 0 && currentY > startY) {
+            e.preventDefault(); // プル・トゥ・リフレッシュを禁止
+        }
+    });
+
     game = new Game();
     game.init();
     game.start();
