@@ -71,7 +71,6 @@ main {
     display: flex;
     flex-shrink: 0;
     position: relative;
-    left: calc((var(--cell-size) + var(--border-width) * 2) * -0.559);
     overflow-x: hidden;
 }
 .row:nth-child(odd) .cell {
@@ -105,7 +104,7 @@ main {
    border: var(--border-width) dashed #5ec4ff;
    }
    100% {
-   border: var(--border-width) dashed #5ec4ff00;
+   border: var(--border-width) dashed #5ec4ff50;
    }
 }
 .cell.candidate {

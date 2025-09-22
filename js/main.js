@@ -22,15 +22,155 @@ class Game {
         $('#turn').text(this.playerNames[0]);
         this.turn = 0;
         this.playerNum = 0;
+
+        $('.cell').off();
     }
 
     start() {
-
+        this.nextTurn();
     }
 
     nextTurn() {
-        $('.cell.selected').removeClass('selecter');
+        // その方向に一個進んだ先のindexを取得する関数を配列に格納
+        const funcsGetNextIndex = [
+            // 右
+            (prevX, prevY) => { return { x: prevX + 1, y: prevY }; },
+            // 左
+            (prevX, prevY) => { return { x: prevX - 1, y: prevY }; },
+            // 右上
+            (prevX, prevY) => { return { x: (prevY % 2 === 0) ? prevX : prevX - 1, y: prevY - 1 }; },
+            // 左上
+            (prevX, prevY) => { return { x: (prevY % 2 === 0) ? prevX + 1 : prevX, y: prevY - 1 }; },
+            // 右下
+            (prevX, prevY) => { return { x: (prevY % 2 === 0) ? prevX : prevX - 1, y: prevY + 1 }; },
+            // 左下
+            (prevX, prevY) => { return { x: (prevY % 2 === 0) ? prevX + 1 : prevX, y: prevY + 1 }; },
+        ];
+        // 動かすコマが選択された時の処理
+        const moveChessman = ($selectedCell) => {
+            $(`.cell.available`).removeClass('candidate');
+            $(`.cell:has(.chessman${this.playerNum})`).removeClass('selected');
+            $selectedCell.addClass('selected');
+
+            let index = this.getCellIndex($selectedCell);
+            let nextCell;
+
+            // 候補を調べてクラスとイベントを追加
+            for (const func of funcsGetNextIndex) {
+                let prevX = index.x;
+                let prevY = index.y;
+
+                let nextIndex = func(prevX, prevY);
+
+                nextCell = this.getCell(nextIndex.x, nextIndex.y);
+                if (this.isAvailable(nextCell) && this.getChessmanName(nextCell) === null) {
+                    prevX = nextIndex.x;
+                    prevY = nextIndex.y;
+                    nextIndex = func(prevX, prevY);
+                    nextCell = this.getCell(nextIndex.x, nextIndex.y);
+
+                    while (this.isAvailable(nextCell) && this.getChessmanName(nextCell) === null) {
+                        prevX = nextIndex.x;
+                        prevY = nextIndex.y;
+                        nextIndex = func(prevX, prevY);
+                        nextCell = this.getCell(nextIndex.x, nextIndex.y);
+                        if (!nextCell) break;
+                    }
+
+                    const $candidate = this.getCell(prevX, prevY);
+                    $candidate.addClass('candidate');   // 候補を表示
+                    // クリック時にコマを移動
+                    const move = () => {
+                        this.moveChessman(index, { x: prevX, y: prevY }, () => {
+                            // 勝敗の判定
+                            if (false) {
+
+                            } else {
+                                // 勝敗が決まっていなければ
+                                $('.cell.selected').removeClass('selected');
+                                $('.cell.candidate').removeClass('candidate');
+                                $('.cell').off();
+                                $('.cell.available:not(*:has(.chessman))').on('touchend', function (event) {
+                                    moveCell($(this));
+                                });
+                            }
+                        });
+                    };
+                    $candidate.on('touchend', move);
+                }
+            }
+
+        };
+        // 動かすセルが選択された時の処理
+        const moveCell = ($selectedCell) => {
+            // そのセルにコマがあればreturn
+            if (this.getChessmanName($selectedCell) !== null) return;
+
+            // 隣にavailableでないセルがなければreturn
+            const index = this.getCellIndex($selectedCell);
+            let hasUnavailableNeighbour = false;
+            for (const func of funcsGetNextIndex) {
+                const neighbourIndex = func(index.x, index.y);
+                const neighbour = this.getCell(neighbourIndex.x, neighbourIndex.y);
+                if (!this.isAvailable(neighbour)) {
+                    hasUnavailableNeighbour = true;
+                    break;
+                }
+            }
+            if (!hasUnavailableNeighbour) return;
+
+            $(`.cell.available`).removeClass('candidate');
+            $('.cell.available').removeClass('selected');
+            $selectedCell.addClass('selected');
+
+            const markCandidate = ($cell) => {
+                const cellIndex = this.getCellIndex($cell);
+                for (const func of funcsGetNextIndex) {
+                    const nextCellIndex = func(cellIndex.x, cellIndex.y);
+                    const $nextCell = this.getCell(nextCellIndex.x, nextCellIndex.y);
+                    if (!this.isAvailable($nextCell)) {
+                        $nextCell.addClass('candidate');
+                        $nextCell.off();    // 2回実行されないようにイベントを削除
+                        const move = () => {
+                            $('.cell.selected').removeClass('selected');
+                            this.moveCell(index, nextCellIndex, () => {
+                                // 端っこギリギリの時に拡張する
+                                if (nextCellIndex.x === 0) {
+                                    this.addColumnLeft();
+                                } else if (nextCellIndex.x === this.fieldSize.width - 1) {
+                                    this.addColumnRight();
+                                }
+                                if (nextCellIndex.y <= 1) {
+                                    this.addRowTop();
+                                } else if (nextCellIndex.y === this.fieldSize.height - 1) {
+                                    this.addRowBottom();
+                                }
+                                this.endTurn();
+                                this.nextTurn();
+                            });
+                        };
+                        $nextCell.on('touchend', function (event) {
+                            // 移動さきのセルを選択した時の処理
+                            move();
+                        });
+                    }
+                }
+            };
+            $('.cell.available').each(function () {
+                markCandidate($(this));
+            });
+        }
+
+        $(`.cell:has(.chessman${this.playerNum})`).on('touchend', function (event) {
+            moveChessman($(this));
+        });
+    }
+
+    endTurn() {
+        // リセット
+        $('.cell.selected').removeClass('selected');
         $('.cell.candidate').removeClass('candidate');
+        $('.cell').off();
 
         this.turn++;
         this.playerNum = this.turn % 2;
@@ -40,7 +180,7 @@ class Game {
 
     // ----描画----
     adjustFieldWidth() {
-        const width = (this.cellSize + this.borderWidth * 2) * 1.118 * this.fieldSize.width;
+        const width = (this.cellSize + this.borderWidth * 2) * 1.118 * (this.fieldSize.width + 0.5);
         $('.row').css('width', width + 'px');
     }
 
@@ -110,15 +250,46 @@ class Game {
     }
 
     addColumnLeft() {
-
+        $('.row').each(function () {
+            $(this).prepend($('<div>').addClass('cell'));
+        });
+        this.fieldSize.width++;
+        this.adjustFieldWidth();
     }
 
     addColumnRight() {
+        $('.row').each(function () {
+            $(this).append($('<div>').addClass('cell'));
+        });
+        this.fieldSize.width++;
+        this.adjustFieldWidth();
+    }
+    addRowTop() {
+        let $row = $('<div>').addClass('row');
+        for (let i = 0; i < this.fieldSize.width; i++) {
+            $row.append($('<div>').addClass('cell'));
+        }
+        $('#field').prepend($row);
+        $row = $('<div>').addClass('row');
+        for (let i = 0; i < this.fieldSize.width; i++) {
+            $row.append($('<div>').addClass('cell'));
+        }
+        $('#field').prepend($row);
+        this.fieldSize.height++;
+    }
+    addRowBottom() {
+        const $row = $('<div>').addClass('row');
+        for (let i = 0; i < this.fieldSize.width; i++) {
+            $row.append($('<div>').addClass('cell'));
+        }
+        $('#field').append($row);
+        $('#field').append($('.cell.moving'));
 
+        this.fieldSize.height++;
     }
 
     // ----こま、セルの移動----
-    moveCell(from, to) {
+    moveCell(from, to, f=null) {
         const $movingCell = $('.cell.moving');
         const cellPosFrom = this.getCellPos(from.x, from.y);
         const cellPosTo = this.getCellPos(to.x, to.y);
@@ -141,14 +312,17 @@ class Game {
                 // 移動後の処理
                 this.getCell(to.x, to.y).addClass('available');
                 $movingCell.addClass('d-none');
+                if (f !== null) {
+                    f();
+                }
             }, 300);
         }, 100);
     }
 
-    moveChessman(from, to) {
+    moveChessman(from, to, f = null) {
         const $cellFrom = this.getCell(from.x, from.y);
         const $cellTo = this.getCell(to.x, to.y);
-        if (this.getChessman($cellFrom) && !this.getChessman($cellTo) && this.isAvailable($cellTo)) {
+        if (this.getChessmanName($cellFrom) && !this.getChessmanName($cellTo) && this.isAvailable($cellTo)) {
             let $chessman = $cellFrom.find('.chessman')[0];
 
             const cellPosFrom = this.getCellPos(from.x, from.y);
@@ -183,6 +357,9 @@ class Game {
                     // 移動後の処理
                     $chessman.removeClass('moving');
                     $cellTo.append($chessman);
+                    if (f !== null) {
+                        f();
+                    }
                 }, 300);
             }, 100);
 
@@ -237,6 +414,7 @@ class Game {
 
 // ----初期化----
 $(function () {
+    // プル・トゥ・リフレッシュを禁止
     let startY = 0;
 
     $(window).on("touchstart", function (e) {
@@ -253,6 +431,7 @@ $(function () {
         }
     });
 
+    // ----ゲームをスタート----
     game = new Game();
     game.init();
     game.start();
