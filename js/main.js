@@ -14,6 +14,9 @@ class Game {
         this.playerNames = ['Red', 'Blue'];
 
         this.init();
+        $(document).on('touchstart', function(event) {
+
+        });
     }
 
     init() {
@@ -82,14 +85,45 @@ class Game {
                     // クリック時にコマを移動
                     const move = () => {
                         this.moveChessman(index, { x: prevX, y: prevY }, () => {
-                            // 勝敗の判定
-                            if (false) {
+                            // リセット
+                            $('.cell.selected').removeClass('selected');
+                            $('.cell.candidate').removeClass('candidate');
+                            $('.cell').off();
 
+                            // 勝敗の判定
+                            let allChessmanHaveNeighbor = true;
+                            let allChessmanHaveTwoNeighbors = true;
+                            // 三つ全てが隣接しているかの判定
+                            const getNeighbourChessmanCount = ($cell) => {
+                                const index = this.getCellIndex($cell);
+                                let cnt = 0
+                                for (const func of funcsGetNextIndex) {
+                                    const neighbourIndex = func(index.x, index.y);
+                                    const $neighbourCell = this.getCell(neighbourIndex.x, neighbourIndex.y);
+                                    if (this.getChessmanName($neighbourCell) === 'chessman' + this.playerNum) {
+                                        cnt++;
+                                    }
+                                }
+                                return cnt;
+                            }
+                            $(`.cell:has(.chessman${this.playerNum})`).each(function () {
+                                const cnt = getNeighbourChessmanCount($(this));
+                                if (cnt === 0) {
+                                    allChessmanHaveNeighbor = false;
+                                }
+                                if (cnt < 2) {
+                                    allChessmanHaveTwoNeighbors = false;
+                                }
+                            });
+
+                            if (allChessmanHaveNeighbor && !allChessmanHaveTwoNeighbors) {
+                                // 決着がついたら
+                                if(confirm(this.playerNames[this.playerNum] + 'の勝ちです。もう一度プレイしますか？')) {
+                                    this.init();
+                                    this.start();
+                                }
                             } else {
-                                // 勝敗が決まっていなければ
-                                $('.cell.selected').removeClass('selected');
-                                $('.cell.candidate').removeClass('candidate');
-                                $('.cell').off();
+                                // 決着がついていなければ
                                 $('.cell.available:not(*:has(.chessman))').on('touchend', function (event) {
                                     moveCell($(this));
                                 });
@@ -289,7 +323,7 @@ class Game {
     }
 
     // ----こま、セルの移動----
-    moveCell(from, to, f=null) {
+    moveCell(from, to, f = null) {
         const $movingCell = $('.cell.moving');
         const cellPosFrom = this.getCellPos(from.x, from.y);
         const cellPosTo = this.getCellPos(to.x, to.y);
