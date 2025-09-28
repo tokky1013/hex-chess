@@ -186,6 +186,8 @@ class Game {
 
             const markCandidate = ($cell) => {
                 const cellIndex = this.getCellIndex($cell);
+                // セルが選択されたセルならreturn
+                if(index.x === cellIndex.x && index.y === cellIndex.y) return;
                 for (const func of funcsGetNextIndex) {
                     const nextCellIndex = func(cellIndex.x, cellIndex.y);
                     const $nextCell = this.getCell(nextCellIndex.x, nextCellIndex.y);
@@ -219,9 +221,12 @@ class Game {
                     }
                 }
             };
-            $('.cell.available').each(function () {
-                markCandidate($(this));
-            });
+            $('.cell').removeClass('candidate');
+            setTimeout(() => {
+                $('.cell.available').each(function () {
+                    markCandidate($(this));
+                });
+            }, 20);
         }
 
         // 動かせるコマがあるか判定
